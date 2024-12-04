@@ -1,0 +1,221 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:5.7
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "rootpassword"
+        - name: MYSQL_DATABASE
+          value: "auth_db"
+        - name: MYSQL_USER
+          value: "auth_user"
+        - name: MYSQL_PASSWORD
+          value: "auth_password"
+        ports:
+        - containerPort: 3306
+        args:
+        - "--default-authentication-plugin=mysql_native_password"
+        - "--bind-address=0.0.0.0"
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: mysql-pv-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+spec:
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    targetPort: 3306
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  labels:
+    app: auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+      - name: auth-service
+        image: iliasrais/auth-service:latest
+        env:
+        - name: DB_CONNECTION
+          value: "mysql"
+        - name: DB_HOST
+          value: "mysql"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_DATABASE
+          value: "auth_db"
+        - name: DB_USERNAME
+          value: "auth_user"
+        - name: DB_PASSWORD
+          value: "auth_password"
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: auth-storage
+          mountPath: /app/storage
+      volumes:
+      - name: auth-storage
+        persistentVolumeClaim:
+          claimName: auth-pv-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  selector:
+    app: auth
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-service
+  labels:
+    app: task
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: task
+  template:
+    metadata:
+      labels:
+        app: task
+    spec:
+      containers:
+      - name: task-service
+        image: iliasrais/task-service:latest
+        env:
+        - name: DB_CONNECTION
+          value: "mysql"
+        - name: DB_HOST
+          value: "mysql"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_DATABASE
+          value: "task_db"
+        - name: DB_USERNAME
+          value: "task_user"
+        - name: DB_PASSWORD
+          value: "task_password"
+        ports:
+        - containerPort: 8001
+        volumeMounts:
+        - name: task-storage
+          mountPath: /app/storage
+      volumes:
+      - name: task-storage
+        persistentVolumeClaim:
+          claimName: task-pv-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-service
+spec:
+  selector:
+    app: task
+  ports:
+  - port: 8001
+    targetPort: 8001
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-service
+  labels:
+    app: project
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: project
+  template:
+    metadata:
+      labels:
+        app: project
+    spec:
+      containers:
+      - name: project-service
+        image: iliasrais/project-service:latest
+        env:
+        - name: DB_CONNECTION
+          value: "mysql"
+        - name: DB_HOST
+          value: "mysql"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_DATABASE
+          value: "project_db"
+        - name: DB_USERNAME
+          value: "project_user"
+        - name: DB_PASSWORD
+          value: "project_password"
+        ports:
+        - containerPort: 8002
+        volumeMounts:
+        - name: project-storage
+          mountPath: /app/storage
+      volumes:
+      - name: project-storage
+        persistentVolumeClaim:
+          claimName: project-pv-claim
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: project-service
+spec:
+  selector:
+    app: project
+  ports:
+  - port: 8002
+    targetPort: 8002
+  type: ClusterIP
